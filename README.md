@@ -9,7 +9,7 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 - ✅ Retrieve the **Lovelace balance** using the [Koios API](https://api.koios.rest).
 
 ### Upcoming Features
-- [ ] **Transaction creation and signing **.
+- [ ] **Transaction creation and signing**.
 - [ ] **Fee estimation and coin selection strategies**.
 - [ ] **Multi-asset support** for sending and receiving Cardano tokens.
 - [ ] **Mac, Linux and other platform version support**.
