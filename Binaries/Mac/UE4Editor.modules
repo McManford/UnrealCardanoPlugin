@@ -1,0 +1,7 @@
+{
+	"BuildId": "6abcfd47-1023-4f58-80af-e6ddab8e66d7",
+	"Modules": 
+	{
+		"CardanoPlugin": "UE4Editor-CardanoPlugin.dylib"
+	}
+}

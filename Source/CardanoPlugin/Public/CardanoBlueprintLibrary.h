@@ -12,11 +12,6 @@
 /**
  * Blueprint library for Cardano wallet and address generation.
  */
-static const cardano_account_derivation_path_t ACCOUNT_DERIVATION_PATH = {
-    1852U | 0x80000000,
-    1815U | 0x80000000,
-    0U
-};
 
 USTRUCT(BlueprintType)
 struct FTransactionInput
@@ -58,34 +53,68 @@ class CARDANOPLUGIN_API UCardanoBlueprintLibrary : public UBlueprintFunctionLibr
 
 public:
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
-    static void GenerateWallet(TArray<FString>& OutMnemonicWords, FString& OutAddress);
+    static void GenerateWallet(TArray<FString>& OutMnemonicWords, FString& OutAddress, const FString& Password = TEXT("password"));
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
     static void RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, const FString& Password = TEXT("password"));
 
-    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
-    static void GetAddressBalance(const FString& Address, FAddressBalance& OutBalance, const FOnBalanceResult& OnComplete);
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Koios")
+    static void QueryBalanceWithKoios(const FString& Address, FAddressBalance& OutBalance, const FOnBalanceResult& OnComplete);
 
-    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Koios")
     static void SubmitTransactionWithKoios(const TArray<uint8>& TransactionBytes, const FString& KoiosApiEndpoint);
 
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
+    static void QueryBalanceWithOgmios(const FString& OgmiosURL, const FString& Address, const FOnBalanceQueryComplete& OnComplete);
+
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
-    static TArray<uint8> BuildTransaction(
-        const TArray<FTransactionInput>& Inputs,
+    static void RegisterWithWalletServer(
+        const FString& WalletURL,
+        const FString& Passphrase, 
+        const TArray<FString>& MnemonicWords,
+        const FOnWalletRegistrationComplete& OnComplete,
+        EWalletRestorationMode RestorationMode = EWalletRestorationMode::FROM_GENESIS);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static bool SendADAWithWalletServer(
         const FString& ReceiverAddress,
+        const FString& WalletURL,
         int64 AmountLovelace,
         int64 FeeLovelace,
-        int64 TTL, 
-        const TArray<FString>& MnemonicWords);
+        const FString& Password,
+        FTokenTransactionResult& OutResult);
 
-    UFUNCTION(BlueprintCallable, Category = "Cardano")
-    static void GetAddressUTXOs(const FString& Address, TArray<FUTxO>& OutUTxOs, const FOnUTxOsResult& OnComplete);
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static bool SendTokensWithWalletServer(
+        const FString& WalletURL, 
+        const FString& ReceiverAddress, 
+        const TArray<FTokenTransfer>& Transfers, 
+        const FString& Passphrase,
+        FTokenTransactionResult& OutResult);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    bool SendTokensAndADAWithWalletServer(
+        const FString& WalletURL, 
+        const FString& ReceiverAddress, 
+        int64 AmountLovelace, 
+        int64 FeeLovelace, 
+        const TArray<FTokenTransfer>& Transfers, 
+        const FString& Passphrase, 
+        FTokenTransactionResult& OutResult);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    bool GetWalletServerNetInfo(
+        const FString& WalletURL,
+        const FOnNetworkInfoResult& OnComplete);
 
     UFUNCTION(BlueprintPure, Category = "Cardano|Math")
     static float LovelaceToAda(const int64 Lovelace);
 
     UFUNCTION(BlueprintPure, Category = "Cardano|Math")
     static int64 AdaToLovelace(const float Ada);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Math")
+    static FString DecodeCardanoAssetName(const FString& HexEncodedAssetName);
 
     UFUNCTION(BlueprintCallable, Category = "Cardano")
     static TArray<FTransactionInput> ConvertUTxOsToInputs(const TArray<FUTxO>& UTxOs)

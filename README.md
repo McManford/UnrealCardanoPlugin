@@ -5,18 +5,19 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 
 ### Wallet Management
 - ✅ Generate a new wallet address from a **24-word mnemonic phrase** via cardano-c library.
-- ✅ Restore a wallet address from an **existing 24-word mnemonic phrase**.
-- ✅ Retrieve the **Lovelace balance** using the [Koios API](https://api.koios.rest).
+- ✅ Restore a wallet address from an **existing 24-word mnemonic phrase** and password combination.
+- ✅ Retrieve the **Lovelace and token balance** using the [Koios API](https://api.koios.rest) and Ogmios.
+- ✅ Mac, Android, iOS, and other platform libraries added. 
+        - Runtime: Tested on IPhone XS (iOS 18), AppleTV 4K (tvOS), and Android Galaxy S22 Ultra (Arm64 - Android 14). 
+        - Editor: Tested amd supports Unreal engine version 4.27 on Windows and MacOS.
+- ✅ Example code using [caradno-wallet api service](https://github.com/cardano-foundation/cardano-wallet).
 
 ### Upcoming Features
-- [ ] **Transaction creation and signing**.
 - [ ] **Fee estimation and coin selection strategies**.
-- [ ] **Multi-asset support** for sending and receiving Cardano tokens.
-- [ ] **Mac, Linux and other platform version support**.
+- [ ] **Multi-asset support** for sending Cardano based tokens.
 
 ## Development
-
-This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently supports Unreal engine version 4.27 on Windows.
+This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested amd supports Unreal engine version 4.27 on Windows and MacOS, should work with later version but not tested yet.
 
 ## License
 
@@ -31,5 +32,4 @@ Contributions are welcome! Feel free to submit **pull requests** or open **issue
 If you'd like to support this project, you can send funds to the following addresses:
 
 - **ADA**: `addr1q9uyegwa79525uksahk80vdfyznchd6q2clcvgk3vcm3zdmcfjsamutg4fedpm0vw7c6jg983wm5q43lsc3dze3hzymsexkm3m`
-- **BTC**: `bc1qy6ch2szcrfnjgs7j72vh5xjdyqpl8dc4szqk26`
-
+- **BTC**: `33R6Mytrbew4uJ28ppC7QexHg36VAiBHJA`
