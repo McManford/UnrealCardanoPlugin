@@ -1,5 +1,6 @@
 ﻿# CardanoPlugin
-A prototype plugin for integrating Cardano with Unreal Engine. This project is currently in an early development stage and aims to provide wallet and transaction functionalities. Can be used for potential token and NFT related projects within unreal engine.
+
+A prototype plugin for integrating Cardano with Unreal Engine. This project is currently in an early development stage and aims to provide wallet and transaction functionalities. Can be used for potential token and NFT related projects within Unreal Engine.
 
 ## Features
 
@@ -7,17 +8,18 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 - ✅ Generate a new wallet address from a **24-word mnemonic phrase** via cardano-c library.
 - ✅ Restore a wallet address from an **existing 24-word mnemonic phrase** and password combination.
 - ✅ Retrieve the **Lovelace and token balance** using the [Koios API](https://api.koios.rest) and Ogmios.
-- ✅ Mac, Android, iOS, and other platform libraries added. 
-        - Runtime: Tested on IPhone XS (iOS 18), AppleTV 4K (tvOS), and Android Galaxy S22 Ultra (Arm64 - Android 14). 
-        - Editor: Tested amd supports Unreal engine version 4.27 on Windows and MacOS.
-- ✅ Example code using [caradno-wallet api service](https://github.com/cardano-foundation/cardano-wallet).
+- ✅ Mac, Android, iOS, and other platform libraries added.
+  - Runtime: Tested on iPhone XS (iOS 18), AppleTV 4K (tvOS), and Android Galaxy S22 Ultra (Arm64 - Android 14).
+  - Editor: Tested and supports Unreal Engine version 4.27 on Windows and MacOS.
+- ✅ Example code using [cardano-wallet API service](https://github.com/cardano-foundation/cardano-wallet).
 
 ### Upcoming Features
 - [ ] **Fee estimation and coin selection strategies**.
 - [ ] **Multi-asset support** for sending Cardano based tokens.
 
 ## Development
-This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested amd supports Unreal engine version 4.27 on Windows and MacOS, should work with later version but not tested yet.
+
+This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested and supports Unreal Engine version 4.27 on Windows and MacOS, should work with later versions but not tested yet.
 
 ## License
 
