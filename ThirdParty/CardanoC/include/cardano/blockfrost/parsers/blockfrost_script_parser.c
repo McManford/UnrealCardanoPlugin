@@ -23,9 +23,9 @@
 
 #include <cardano/json/json_object.h>
 
-#include "../common/blockfrost_common.h"
-#include "../common/blockfrost_url_builders.h"
-#include "../../utils.h"
+#include "blockfrost/common/blockfrost_common.h"
+#include "blockfrost/common/blockfrost_url_builders.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>

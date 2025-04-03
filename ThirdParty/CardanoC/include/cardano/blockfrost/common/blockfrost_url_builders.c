@@ -23,7 +23,7 @@
 
 #include "blockfrost_url_builders.h"
 #include "blockfrost_common.h"
-#include "../../utils.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>

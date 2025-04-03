@@ -58,6 +58,18 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
     static void RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, const FString& Password = TEXT("password"));
 
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static void EstimateTransactionFeeOffline(
+        const TArray<FTokenTransfer>& Transfers,
+        bool bIncludeMetadata,
+        FTransactionFeeResult& OutResult);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static void AsyncEstimateTransactionFeeOffline(
+        const TArray<FTokenTransfer>& Transfers,
+        bool bIncludeMetadata,
+        const FOnFeeEstimationComplete& OnComplete);
+
     UFUNCTION(BlueprintCallable, Category = "Cardano|Koios")
     static void QueryBalanceWithKoios(const FString& Address, FAddressBalance& OutBalance, const FOnBalanceResult& OnComplete);
 
@@ -66,6 +78,136 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
     static void QueryBalanceWithOgmios(const FString& OgmiosURL, const FString& Address, const FOnBalanceQueryComplete& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
+    static bool GetUtxosWithOgmios(
+        const FString& Address,
+        const FString& OgmiosURL,
+        FAddressBalance& OutBalance,
+        const FOnUTxOsResult& OnComplete);
+
+    /**
+    * Sends Lovelace (ADA) transaction using the Ogmios node interface.
+    *
+    * @param OgmiosURL The URL of the Ogmios JSON-RPC endpoint
+    * @param ReceiverAddress The Cardano address that will receive the ADA
+    * @param AmountLovelace The amount of Lovelace to send (1 ADA = 1,000,000 Lovelace)
+    * @param MnemonicWords The 24-word mnemonic phrase for the sending wallet
+    * @param Password The spending password for the wallet
+    * @param OutResult [Out] Structure that will contain the transaction result details
+    * @param OnComplete Delegate that will be called when the transaction completes (success or failure)
+    * @return Returns true if the transaction was initiated successfully, false otherwise
+    */
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
+    static bool SendLovelaceWithOgmios(
+        const FString& OgmiosURL,
+        const FString& ReceiverAddress,
+        int64 AmountLovelace,
+        const TArray<FString>& MnemonicWords,
+        const FString& Password,
+        FTokenTransactionResult& OutResult,
+        const FOnTransactionCompleted& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
+    static bool SendTokensWithOgmios(
+        const FString& OgmiosURL,
+        const FString& ReceiverAddress,
+        TMap<FString, int64> TokensToSend,
+        const TArray<FString>& MnemonicWords,
+        const FString& Password,
+        FTokenTransactionResult& OutResult,
+        const FOnTransactionCompleted& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
+    static bool GetAssetUtxosByIdWithOgmios(
+        const FString& Address,
+        const FString& OgmiosURL,
+        const TArray<FString>& AssetIds,
+        FAddressBalance& OutBalance,
+        const FOnUTxOsResult& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost")
+    static void AsyncCalculateTransactionFeeWithBlockfrost(
+        const FString& BlockfrostApiKey, 
+        ECardanoNetwork NetworkType,
+        const TArray<FTokenTransfer>& Outputs, 
+        const FString& SenderAddress,
+        const FString& ReceiverAddress,
+        const FOnFeeEstimationComplete& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost")
+    static void SendTokensWithBlockfrost(
+        const FString& ReceiverAddress, 
+        TMap<FString, int64> TokensToSend, 
+        const FString& BlockfrostApiKey, 
+        ECardanoNetwork NetworkType, 
+        const TArray<FString>& MnemonicWords, 
+        const FString& Password, 
+        FTransactionResult& OutResult, 
+        const FOnTransactionCompleted& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost", meta = (DisplayName = "Async Send Tokens with Blockfrost"))
+    static void AsyncSendTokensWithBlockfrost(
+        const FString& ReceiverAddress,
+        TMap<FString, int64> TokensToSend,
+        const FString& BlockfrostApiKey,
+        ECardanoNetwork NetworkType,
+        const TArray<FString>& MnemonicWords,
+        const FString& Password,
+        FTransactionResult& OutResult,
+        const FOnTransactionCompleted& OnComplete,
+        const FString& CustomBaseUrl);
+
+    /**
+    * Sends Lovelace (ADA) to a specified address using the Blockfrost provider
+    * @param ReceiverAddress - Destination address where funds will be sent
+    * @param AmountLovelace - Amount of Lovelace to send (1 ADA = 1,000,000 Lovelace)
+    * @param BlockfrostApiKey - Your Blockfrost API key
+    * @param NetworkType - Network to use (Mainnet, Testnet, Preprod, or Preview)
+    * @param MnemonicWords - Wallet mnemonic phrase (24 words)
+    * @param Password - Wallet password
+    * @param OutResult - Transaction result info (success, error message, transaction ID)
+    * @param OnComplete - Callback when transaction is complete
+    */
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost")
+    static void SendLovelaceWithBlockfrost(
+        const FString& ReceiverAddress,
+        int64 AmountLovelace,
+        const FString& BlockfrostApiKey,
+        ECardanoNetwork NetworkType,
+        const TArray<FString>& MnemonicWords,
+        const FString& Password,
+        FTransactionResult& OutResult,
+        const FOnTransactionCompleted& OnComplete);
+
+    /**
+    * Asynchronously sends Lovelace (ADA) to an address using the Blockfrost API.
+    *
+    * This function performs a Cardano transaction in a background thread to send ADA to a specified
+    * address. It handles all aspects of the transaction including wallet creation, UTXO management,
+    * transaction building, signing, submitting and confirming.
+    * 
+    * @param ReceiverAddress The Cardano address to send the Lovelace to
+    * @param AmountLovelace The amount of Lovelace to send (1 ADA = 1,000,000 Lovelace)
+    * @param BlockfrostApiKey Your Blockfrost API key
+    * @param NetworkType The Cardano network to use (Mainnet, Preprod, etc.)
+    * @param MnemonicWords The 24-word mnemonic for the sending wallet
+    * @param Password The spending password for the wallet
+    * @param OutResult [Out] The transaction result containing success status, transaction ID, and any error messages
+    * @param OnComplete Delegate to be called when the transaction is complete
+    * @param CustomBaseUrl Optional custom Blockfrost API base URL (leave empty to use the default)
+    */
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost", meta = (DisplayName = "Async Send Lovelace with Blockfrost"))
+    static void AsyncSendLovelaceWithBlockfrost(
+        const FString& ReceiverAddress,
+        int64 AmountLovelace,
+        const FString& BlockfrostApiKey,
+        ECardanoNetwork NetworkType,
+        const TArray<FString>& MnemonicWords,
+        const FString& Password,
+        FTransactionResult& OutResult,
+        const FOnTransactionCompleted& OnComplete,
+        const FString& CustomBaseUrl = TEXT(""));
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
     static void RegisterWithWalletServer(

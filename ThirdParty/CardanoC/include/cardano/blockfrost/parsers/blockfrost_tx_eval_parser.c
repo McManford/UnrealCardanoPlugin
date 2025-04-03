@@ -25,7 +25,7 @@
 
 #include "blockfrost_parsers.h"
 #include "cardano/witness_set/redeemer_tag.h"
-#include "../../utils.h"
+#include "utils.h"
 #include <cardano/json/json_writer.h>
 
 #include <cardano/scripts/native_scripts/native_script.h>

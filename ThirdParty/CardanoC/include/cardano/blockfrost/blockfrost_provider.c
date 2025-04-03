@@ -25,10 +25,10 @@
 
 #include "../provider_factory.h"
 
-#include "../utils.h"
-#include "common/blockfrost_common.h"
-#include "common/blockfrost_url_builders.h"
-#include "parsers/blockfrost_parsers.h"
+#include "../../utils/utils.h"
+#include "blockfrost/common/blockfrost_common.h"
+#include "blockfrost/common/blockfrost_url_builders.h"
+#include "blockfrost/parsers/blockfrost_parsers.h"
 
 #include <stdio.h>
 #include <stdlib.h>

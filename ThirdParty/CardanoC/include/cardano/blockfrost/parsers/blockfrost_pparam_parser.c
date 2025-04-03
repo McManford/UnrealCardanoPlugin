@@ -21,7 +21,7 @@
 
 /* INCLUDES ******************************************************************/
 
-#include "../../utils.h"
+#include "utils.h"
 
 #include <cardano/json/json_object.h>
 #include <stdlib.h>

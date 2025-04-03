@@ -10,6 +10,9 @@ struct FTokenBalance
     
     UPROPERTY(BlueprintReadOnly, Category = "Cardano")
     FString PolicyId;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Cardano")
+    FString AssetId;
     
     UPROPERTY(BlueprintReadOnly, Category = "Cardano")
     FString AssetName;
@@ -18,7 +21,7 @@ struct FTokenBalance
     FString Quantity;
     
     UPROPERTY(BlueprintReadOnly, Category = "Cardano")
-    FString DisplayName;  
+    FString DisplayName;
 };
 
 USTRUCT(BlueprintType)
@@ -57,11 +60,11 @@ USTRUCT(BlueprintType)
 struct FTokenTransfer
 {
     GENERATED_BODY()
-    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Token Transfer")
+    UPROPERTY(EditDefaultsOnly, Category = "Cardano|Token Transfer")
     FString PolicyId;     // Policy ID for the token (leave empty for ADA)
-    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Token Transfer")
+    UPROPERTY(EditDefaultsOnly, Category = "Cardano|Token Transfer")
     FString AssetName;    // Asset name (leave empty for ADA)
-    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Token Transfer")
+    UPROPERTY(EditDefaultsOnly, Category = "Cardano|Token Transfer")
     int64 Amount;         // Amount to transfer (in Lovelace for ADA, token units for custom tokens)
 };
 
@@ -163,7 +166,62 @@ struct FOgmiosBalanceResponse
     FAddressBalance Balance;
 };
 
+UENUM(BlueprintType)
+enum class ECardanoNetwork : uint8
+{
+    Mainnet UMETA(DisplayName = "Mainnet"),
+    Testnet UMETA(DisplayName = "Testnet"),
+    Preprod UMETA(DisplayName = "Preprod"),
+    Preview UMETA(DisplayName = "Preview")
+};
+
+USTRUCT(BlueprintType)
+struct FTransactionResult
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Transaction")
+    bool bSuccess = false;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Transaction")
+    FString ErrorMessage;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Cardano|Transaction")
+    FString TransactionId;
+};
+
+/**
+ * Structure to hold the result of a transaction fee estimation
+ */
+USTRUCT(BlueprintType)
+struct FTransactionFeeResult
+{
+    GENERATED_BODY()
+    
+    /** Whether the fee estimation was successful */
+    UPROPERTY(BlueprintReadOnly, Category = "Cardano|Transaction")
+    bool bSuccess;
+    
+    /** The estimated transaction fee in lovelace */
+    UPROPERTY(BlueprintReadOnly, Category = "Cardano|Transaction")
+    int64 EstimatedFee;
+    
+    /** Error message if fee estimation failed */
+    UPROPERTY(BlueprintReadOnly, Category = "Cardano|Transaction")
+    FString ErrorMessage;
+    
+    FTransactionFeeResult()
+        : bSuccess(false)
+        , EstimatedFee(0)
+        , ErrorMessage(TEXT(""))
+    {}
+};
+
+// Delegate for fee estimation completion
+DECLARE_DYNAMIC_DELEGATE_OneParam(FOnFeeEstimationComplete, const FTransactionFeeResult&, Result);
+
 // Change the regular delegate to a dynamic delegate
+DECLARE_DYNAMIC_DELEGATE_OneParam(FOnTransactionCompleted, const FTransactionResult&, Result);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnBalanceQueryComplete, const FOgmiosBalanceResponse&, Response);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnNetworkInfoResult, const FCardanoNetworkInfo&, NetworkInfo);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOnWalletRegistrationComplete, const FWalletRegistrationResponse&, Response);

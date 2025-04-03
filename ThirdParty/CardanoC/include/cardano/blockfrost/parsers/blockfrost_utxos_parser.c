@@ -24,7 +24,7 @@
 #include <cardano/json/json_object.h>
 
 #include "blockfrost_parsers.h"
-#include "../../utils.h"
+#include "utils.h"
 
 #include <string.h>
 

@@ -22,8 +22,8 @@
 /* INCLUDES ******************************************************************/
 
 #include "blockfrost_common.h"
-#include "../../console.h"
-#include "../../utils.h"
+#include "../utils/console.h"
+#include "utils.h"
 
 #include <cardano/export.h>
 
