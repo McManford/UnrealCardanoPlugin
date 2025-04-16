@@ -5,6 +5,7 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 ## Features
 
 ### Wallet Management
+
 - ✅ Generate a new wallet address from a **24-word mnemonic phrase** via cardano-c library.
 - ✅ Restore a wallet address from an **existing 24-word mnemonic phrase** and password combination.
 - ✅ Retrieve the **Lovelace and token balance** using the [Koios API](https://api.koios.rest) and [Ogmios](https://github.com/CardanoSolutions/ogmios).
@@ -12,14 +13,17 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
   - Runtime: Tested on iPhone XS (iOS 18), AppleTV 4K (tvOS 18.3), and Android Galaxy S22 Ultra (Android 14).
   - Editor: Tested and supports Unreal Engine version 4.27 on Windows and MacOS.
 - ✅ Example code using [cardano-wallet API service](https://github.com/cardano-foundation/cardano-wallet).
-- ✅ **Multi-asset support** for sending Cardano based tokens.
+- ✅ **Multi-asset support** for sending Cardano based tokens, using Blockfrost API and cardano-c's example.
 
 ### Upcoming Features
+
 - [ ] **Fee estimation and coin selection strategies**.
 
 ## Development
 
-This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested and supports Unreal Engine version 4.27 on Windows and MacOS, should work with later versions but not tested yet.
+This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested and supports Unreal Engine version 4.27 on Windows and MacOS, should work with later versions but not tested yet. 
+
+When using `AsyncSendTokensWithBlockfrost`, leave `CustomBaseUrl` blank to use Blockfrost's API endpoints. Its there in case you want to set up on clients without exposing your Blockfrost API keys.
 
 ## License
 
