@@ -55,6 +55,17 @@ public class CardanoPlugin : ModuleRules
             string CardanoLibPath = Path.Combine(ThirdPartyPath, "CardanoC", "lib", "Linux");
             PublicAdditionalLibraries.Add(Path.Combine(CardanoLibPath, "libcardano-c.so"));
             RuntimeDependencies.Add(Path.Combine(CardanoLibPath, "libcardano-c.so"));
+            PublicDefinitions.Add("_POSIX_C_SOURCE=200809L");
+            PublicDefinitions.Add("_DEFAULT_SOURCE=1");
+            PublicDefinitions.Add("_BSD_SOURCE=1");
+            PublicDefinitions.Add("_GNU_SOURCE=1");
+
+            // Disable specific warnings for Linux builds
+            bEnableUndefinedIdentifierWarnings = false;
+
+            // Force static linking of libm for math functions
+            PublicSystemLibraries.Add("m");
+            PublicSystemLibraries.Add("c");
         }
 
         if (Target.Platform == UnrealTargetPlatform.Mac)
