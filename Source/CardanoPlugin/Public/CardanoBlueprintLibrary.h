@@ -56,7 +56,7 @@ public:
     static void GenerateWallet(TArray<FString>& OutMnemonicWords, FString& OutAddress, const FString& Password = TEXT("password"));
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
-    static void RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, const FString& Password = TEXT("password"));
+    static void RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, FString& OutStakeAddress, const FString& Password = TEXT("password"));
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
     static void EstimateTransactionFeeOffline(
@@ -70,6 +70,18 @@ public:
         bool bIncludeMetadata,
         const FOnFeeEstimationComplete& OnComplete);
 
+    /**
+    * Checks if a word is a valid BIP39 mnemonic word for Cardano wallets.
+    * 
+    * @param Word The word to validate
+    * @return True if the word is in the BIP39 word list, false otherwise
+    */
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static bool IsValidMnemonicWord(const FString& Word);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Wallet")
+    static bool ParseMnemonicPhrase(const FString& Phrase, TArray<FString>& OutWords, FString& OutErrorMessage);
+
     UFUNCTION(BlueprintCallable, Category = "Cardano|Koios")
     static void QueryBalanceWithKoios(const FString& Address, FAddressBalance& OutBalance, const FOnBalanceResult& OnComplete);
 
@@ -78,6 +90,13 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
     static void QueryBalanceWithOgmios(const FString& OgmiosURL, const FString& Address, const FOnBalanceQueryComplete& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Auth")
+    static void GetWalletNonceAsync(
+        const FString& StakeAddress,
+        const FString& UrlBase,
+        const FString& WalletName,
+        const FOnGetWalletNonceComplete& OnComplete);
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Ogmios")
     static bool GetUtxosWithOgmios(
@@ -134,6 +153,15 @@ public:
         const FString& SenderAddress,
         const FString& ReceiverAddress,
         const FOnFeeEstimationComplete& OnComplete);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost")
+    static void GetAddressBalanceWithBlockfrost(
+        const FString& Address, 
+        const FString& BlockfrostApiKey, 
+        TMap<FString, FString>& OutTokenMap,
+        TMap<FString, FString>& OutUnitMap,
+        const FOnBalanceResult& OnComplete);
+
 
     UFUNCTION(BlueprintCallable, Category = "Cardano|Blockfrost")
     static void SendTokensWithBlockfrost(
@@ -255,8 +283,15 @@ public:
     UFUNCTION(BlueprintPure, Category = "Cardano|Math")
     static int64 AdaToLovelace(const float Ada);
 
-    UFUNCTION(BlueprintCallable, Category = "Cardano|Math")
+    UFUNCTION(BlueprintPure, Category = "Cardano|Math")
     static FString DecodeCardanoAssetName(const FString& HexEncodedAssetName);
+
+    UFUNCTION(BlueprintPure, Category = "Cardano")
+    static int64 ConvertDisplayAmountToRawUnits(const FString& Ticker, const FString& DisplayAmount);
+
+    UFUNCTION(BlueprintCallable, Category = "Cardano|Token Transfer")
+    static void MergeTokenTransfers(const TArray<FTokenTransfer>& Transfers, TMap<FString, int64>& OutMergedMap);
+
 
     UFUNCTION(BlueprintCallable, Category = "Cardano")
     static TArray<FTransactionInput> ConvertUTxOsToInputs(const TArray<FUTxO>& UTxOs)

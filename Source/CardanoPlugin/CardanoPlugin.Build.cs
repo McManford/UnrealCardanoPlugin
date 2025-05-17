@@ -14,7 +14,7 @@ public class CardanoPlugin : ModuleRules
             "InputCore",
             "Projects",
             "HTTP",
-            "libcurl",
+            //"libcurl", //for UE4
             "Json",
             "JsonUtilities"
         });
@@ -29,6 +29,31 @@ public class CardanoPlugin : ModuleRules
         PublicIncludePaths.Add(Path.Combine(CardanoIncludePath, "cardano", "blockfrost", "common"));
         PublicIncludePaths.Add(Path.Combine(CardanoIncludePath, "cardano", "blockfrost", "parsers"));
         PublicIncludePaths.Add(Path.Combine(CardanoIncludePath, "cardano", "utils"));
+
+        //var version = Target.GetEngineVersion();
+
+        //if (version.Major > 5 || (version.Major == 5 && version.Minor >= 1))
+        //{
+            string CurlLibPath = Path.Combine(ModuleDirectory, "../../ThirdParty", "CardanoC", "libcurl", "lib", "Win64");
+            string CurlIncludePath = Path.Combine(ModuleDirectory, "../../ThirdParty", "CardanoC", "libcurl", "include");
+            string ZlibLibPath = Path.Combine(ThirdPartyPath, "CardanoC", "zlib", "lib", "Win64");
+            string ZlibIncludePath = Path.Combine(ThirdPartyPath, "CardanoC", "zlib", "include");
+            PublicIncludePaths.Add(ZlibIncludePath);
+            PublicAdditionalLibraries.Add(Path.Combine(ZlibLibPath, "zlibstatic.lib"));
+
+
+            PublicIncludePaths.Add(CurlIncludePath);
+            PublicAdditionalLibraries.Add(Path.Combine(CurlLibPath, "libcurl.lib"));
+            PublicDefinitions.Add("CURL_STATICLIB");
+
+            PublicSystemLibraries.AddRange(new string[] {
+                "crypt32.lib",
+                "ws2_32.lib",
+                "wldap32.lib",
+                "advapi32.lib",
+                "normaliz.lib"
+            });
+        //}
 
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {

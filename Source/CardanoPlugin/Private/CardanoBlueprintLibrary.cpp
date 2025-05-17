@@ -15,6 +15,7 @@
 #include <cardano/transaction/transaction.h>
 #include <cardano/transaction_builder/transaction_builder.h>
 #include <cardano/address/base_address.h>
+#include <cardano/address/reward_address.h>
 #include <cardano/key_handlers/software_secure_key_handler.h>
 #include "cardano/key_handlers/secure_key_handler.h"
 #include "Misc/Paths.h"
@@ -26,6 +27,8 @@
 #include <cardano/blockfrost/common/blockfrost_url_builders.h>
 
 // C 
+static FString GWalletPassphrase;
+
 static const cardano_account_derivation_path_t ACCOUNT_DERIVATION_PATH = {
     1852U | 0x80000000,
     1815U | 0x80000000,
@@ -176,9 +179,10 @@ void UCardanoBlueprintLibrary::GenerateWallet(TArray<FString>& OutMnemonicWords,
         UE_LOG(LogTemp, Warning, TEXT("Word %d: %s"), i + 1, *Word);
     }
 
+    GWalletPassphrase = Password;
     FString SanitizedPassword = Password.TrimStartAndEnd();
     const char* PassphraseUtf8 = TCHAR_TO_UTF8(*SanitizedPassword);
-    UE_LOG(LogTemp, Warning, TEXT("Using passphrase: %s"), PassphraseUtf8);
+    //UE_LOG(LogTemp, Warning, TEXT("Using passphrase: %s"), *GWalletPassphrase);
 
     cardano_secure_key_handler_t* key_handler = nullptr;
     result = cardano_software_secure_key_handler_new(
@@ -218,8 +222,8 @@ void UCardanoBlueprintLibrary::GenerateWallet(TArray<FString>& OutMnemonicWords,
 
 int32 UCardanoBlueprintLibrary::GetPassphrase(byte_t* buffer, size_t buffer_len)
 {
-    const TCHAR* PassphraseStr = TEXT("password");
-    const char* PassphraseUtf8 = TCHAR_TO_UTF8(PassphraseStr);
+    const FString Trimmed = GWalletPassphrase.TrimStartAndEnd();
+    const char* PassphraseUtf8 = TCHAR_TO_UTF8(*Trimmed);
     const int32 PassphraseLen = strlen(PassphraseUtf8);
 
     if (buffer_len < PassphraseLen)
@@ -231,7 +235,7 @@ int32 UCardanoBlueprintLibrary::GetPassphrase(byte_t* buffer, size_t buffer_len)
     return PassphraseLen;
 }
 
-void UCardanoBlueprintLibrary::RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, const FString& Password)
+void UCardanoBlueprintLibrary::RestoreWallet(const TArray<FString>& MnemonicWords, FString& OutAddress, FString& OutStakeAddress, const FString& Password)
 {
     UE_LOG(LogTemp, Warning, TEXT("Starting wallet restoration..."));
 
@@ -301,6 +305,7 @@ void UCardanoBlueprintLibrary::RestoreWallet(const TArray<FString>& MnemonicWord
     }
 
     // Create key handler with provided password
+    GWalletPassphrase = Password;
     FString SanitizedPassword = Password.TrimStartAndEnd();
     const char* PassphraseUtf8 = TCHAR_TO_UTF8(*SanitizedPassword);
     cardano_secure_key_handler_t* key_handler = nullptr;
@@ -337,8 +342,134 @@ void UCardanoBlueprintLibrary::RestoreWallet(const TArray<FString>& MnemonicWord
         UE_LOG(LogTemp, Error, TEXT("Address restoration failed"));
     }
 
+    // Derive the stake key from role 2 (staking), index 0
+    cardano_bip32_public_key_t* root_public_key = nullptr;
+    result = cardano_secure_key_handler_bip32_get_extended_account_public_key(
+        key_handler, ACCOUNT_DERIVATION_PATH, &root_public_key);
+
+
+    if (result != CARDANO_SUCCESS || !root_public_key) {
+        UE_LOG(LogTemp, Error, TEXT("Failed to get root public key"));
+        return;
+    }
+
+    const uint32_t stake_path[] = { CARDANO_CIP_1852_ROLE_STAKING, 0 };
+
+    cardano_bip32_public_key_t* stake_pub = nullptr;
+    result = cardano_bip32_public_key_derive(root_public_key, stake_path, 2, &stake_pub);
+    cardano_bip32_public_key_unref(&root_public_key);
+
+    if (result != CARDANO_SUCCESS || !stake_pub) {
+        UE_LOG(LogTemp, Error, TEXT("Failed to derive stake public key"));
+        return;
+    }
+
+    // Convert to ed25519 public key
+    cardano_ed25519_public_key_t* stake_key = nullptr;
+    result = cardano_bip32_public_key_to_ed25519_key(stake_pub, &stake_key);
+    cardano_bip32_public_key_unref(&stake_pub);
+
+    if (result != CARDANO_SUCCESS || !stake_key) {
+        UE_LOG(LogTemp, Error, TEXT("Failed to convert stake pub key to ed25519"));
+        return;
+    }
+
+    // Create credential from public key
+    cardano_credential_t* stake_cred = create_credential(stake_key);
+    cardano_ed25519_public_key_unref(&stake_key);
+
+    // Create reward address (stake address)
+    cardano_reward_address_t* reward_addr = nullptr;
+    result = cardano_reward_address_from_credentials(CARDANO_NETWORK_ID_MAIN_NET, stake_cred, &reward_addr);
+    cardano_credential_unref(&stake_cred);
+
+    if (result == CARDANO_SUCCESS && reward_addr) {
+        FString DerivedStakeAddress = UTF8_TO_TCHAR(cardano_reward_address_get_string(reward_addr));
+        UE_LOG(LogTemp, Warning, TEXT("Restored stake address: %s"), *DerivedStakeAddress);
+
+        // Optional: assign to output
+        OutStakeAddress = DerivedStakeAddress;
+
+        cardano_reward_address_unref(&reward_addr);
+    }
+    else {
+        UE_LOG(LogTemp, Error, TEXT("Failed to build reward stake address"));
+    }
+
     cardano_secure_key_handler_unref(&key_handler);
     UE_LOG(LogTemp, Warning, TEXT("Wallet restoration completed"));
+}
+
+bool UCardanoBlueprintLibrary::IsValidMnemonicWord(const FString& Word)
+{
+    if (Word.IsEmpty())
+    {
+        return false;
+    }
+
+    static const TSet<FString> ValidWordsSet = []()
+        {
+            TSet<FString> Set;
+            for (const FString& W : validBIP39WordsEnglish)
+            {
+                Set.Add(W.ToLower());
+            }
+            return Set;
+        }();
+
+    FString CleanedWord = Word.TrimStartAndEnd().ToLower();
+    return ValidWordsSet.Contains(CleanedWord);
+}
+
+bool UCardanoBlueprintLibrary::ParseMnemonicPhrase(
+    const FString& Phrase,
+    TArray<FString>& OutWords,
+    FString& OutErrorMessage
+)
+{
+    OutWords.Empty();
+    OutErrorMessage.Empty();
+
+    if (Phrase.IsEmpty())
+    {
+        OutErrorMessage = TEXT("Mnemonic phrase is empty.");
+        return false;
+    }
+
+    Phrase.TrimStartAndEnd().ParseIntoArrayWS(OutWords);
+
+    if (OutWords.Num() != 24)
+    {
+        OutErrorMessage = FString::Printf(TEXT("Mnemonic phrase must have exactly 24 words, but found %d."), OutWords.Num());
+        return false;
+    }
+
+    static const TSet<FString> ValidWordsSet = []()
+        {
+            TSet<FString> Set;
+            for (const FString& W : validBIP39WordsEnglish)
+            {
+                Set.Add(W.ToLower());
+            }
+            return Set;
+        }();
+
+    for (int32 i = 0; i < OutWords.Num(); ++i)
+    {
+        FString& Word = OutWords[i];
+        Word = Word.TrimStartAndEnd().ToLower();
+
+        if (!ValidWordsSet.Contains(Word))
+        {
+            OutErrorMessage = FString::Printf(
+                TEXT("Word %d is not a valid BIP-39 word: '%s'"),
+                i + 1, *Word
+            );
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void UCardanoBlueprintLibrary::QueryBalanceWithKoios(const FString& Address, FAddressBalance& OutBalance, const FOnBalanceResult& OnComplete)
@@ -3228,6 +3359,134 @@ void UCardanoBlueprintLibrary::AsyncCalculateTransactionFeeWithBlockfrost(
         });
 }
 
+void UCardanoBlueprintLibrary::GetAddressBalanceWithBlockfrost(
+    const FString& Address,
+    const FString& BlockfrostApiKey,
+    TMap<FString, FString>& OutTokenMap,
+    TMap<FString, FString>& OutUnitMap,
+    const FOnBalanceResult& OnComplete)
+{
+    if (Address.IsEmpty() || BlockfrostApiKey.IsEmpty())
+    {
+        OnComplete.ExecuteIfBound(false, TEXT("Missing parameters"));
+        return;
+    }
+
+    FString Url = FString::Printf(TEXT("https://cardano-mainnet.blockfrost.io/api/v0/addresses/%s"), *Address);
+
+    TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
+    HttpRequest->SetVerb("GET");
+    HttpRequest->SetURL(Url);
+    HttpRequest->SetHeader(TEXT("project_id"), BlockfrostApiKey);
+    HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+
+    HttpRequest->OnProcessRequestComplete().BindLambda(
+        [OnComplete, &OutTokenMap, &OutUnitMap](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bSuccess)
+        {
+            const TMap<FString, FString> KnownAssets = {
+                { TEXT("lovelace"), TEXT("ADA") },
+                { TEXT("8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61446a65644d6963726f555344"), TEXT("DJED") },
+                { TEXT("a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235484f534b59"), TEXT("HOSKY") },
+                { TEXT("279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b"), TEXT("SNEK") },
+                { TEXT("29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c64d494e"), TEXT("MIN") },
+                { TEXT("c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d"), TEXT("USDM") },
+                { TEXT("2dbc49f682ad21f6d18705cf446f9f7a277731ab70ae21a454f888b27273425443"), TEXT("rsBTC") },
+                { TEXT("375df3f2fb44d3c42b3381a09edd4ea2303a57ada32b5308c0774ee0544f4b45"), TEXT("TOKE") },
+                { TEXT("7be64ef81defe3cdc67fd9b4a3b6ea6ff76be986c1ea70b56e3537de0014df104372797374616c204672616773"), TEXT("Crystal Frags") },
+                { TEXT("dc1c894e1bfa10d781d8eea3477dda36fd8c3a47a374cd566e4cc5ee0014df104c6174654e69746553637269707473204c4c43"), TEXT("LateNiteScripts LLC") },
+                { TEXT("fe7c786ab321f41c654ef6c1af7b3250a613c24e4213e0425a7ae45655534441"), TEXT("USDA") }
+            };
+
+            const TMap<FString, int32> AssetDecimals = {
+                { TEXT("lovelace"), 6 },
+                { TEXT("8db269c3ec630e06ae29f74bc39edd1f87c819f1056206e879a1cd61446a65644d6963726f555344"), 6 },
+                { TEXT("a0028f350aaabe0545fdcb56b039bfb08e4bb4d8c4d7c3c7d481c235484f534b59"), 0 },
+                { TEXT("279c909f348e533da5808898f87f9a14bb2c3dfbbacccd631d927a3f534e454b"), 0 },
+                { TEXT("29d222ce763455e3d7a09a665ce554f00ac89d2e99a1a83d267170c64d494e"), 5 },
+                { TEXT("c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d"), 6 },
+                { TEXT("2dbc49f682ad21f6d18705cf446f9f7a277731ab70ae21a454f888b27273425443"), 8 },
+                { TEXT("375df3f2fb44d3c42b3381a09edd4ea2303a57ada32b5308c0774ee0544f4b45"), 0 },
+                { TEXT("7be64ef81defe3cdc67fd9b4a3b6ea6ff76be986c1ea70b56e3537de0014df104372797374616c204672616773"), 4 },
+                { TEXT("dc1c894e1bfa10d781d8eea3477dda36fd8c3a47a374cd566e4cc5ee0014df104c6174654e69746553637269707473204c4c43"), 6 },
+                { TEXT("fe7c786ab321f41c654ef6c1af7b3250a613c24e4213e0425a7ae45655534441"), 6 }
+            };
+
+            if (!bSuccess || !Response.IsValid())
+            {
+                OnComplete.ExecuteIfBound(false, TEXT("Failed to contact Blockfrost"));
+                return;
+            }
+
+            FString ResponseStr = Response->GetContentAsString();
+            TSharedPtr<FJsonObject> JsonObject;
+            TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(ResponseStr);
+
+            if (!FJsonSerializer::Deserialize(Reader, JsonObject) || !JsonObject.IsValid())
+            {
+                OnComplete.ExecuteIfBound(false, TEXT("Failed to parse JSON"));
+                return;
+            }
+
+            const TArray<TSharedPtr<FJsonValue>>* AmountArray;
+            if (!JsonObject->TryGetArrayField("amount", AmountArray))
+            {
+                OnComplete.ExecuteIfBound(false, TEXT("Amount field missing"));
+                return;
+            }
+
+            for (const auto& Entry : *AmountArray)
+            {
+                const TSharedPtr<FJsonObject>* TokenObj;
+                if (Entry->TryGetObject(TokenObj))
+                {
+                    FString Unit, Quantity;
+                    if ((*TokenObj)->TryGetStringField("unit", Unit) &&
+                        (*TokenObj)->TryGetStringField("quantity", Quantity))
+                    {
+                        FString PolicyId, AssetHex, UnitKey, Label;
+
+                        if (Unit.Equals(TEXT("lovelace")))
+                        {
+                            Label = TEXT("ADA");
+                            UnitKey = TEXT("lovelace");
+                        }
+                        else
+                        {
+                            PolicyId = Unit.Left(56);
+                            AssetHex = Unit.Mid(56);
+                            UnitKey = PolicyId + TEXT(".") + AssetHex;
+
+                            Label = KnownAssets.Contains(Unit) ? KnownAssets[Unit] : UnitKey;
+                        }
+
+                        int32 Decimals = AssetDecimals.Contains(Unit) ? AssetDecimals[Unit] : 0;
+                        FString FormattedQuantity;
+
+                        if (Decimals > 0 && Quantity.IsNumeric())
+                        {
+                            int64 RawValue = FCString::Atoi64(*Quantity);
+                            double Scaled = static_cast<double>(RawValue) / FMath::Pow(10.0, Decimals);
+                            FormattedQuantity = FString::Printf(TEXT("%.*f"), Decimals, Scaled);
+                        }
+                        else
+                        {
+                            FormattedQuantity = Quantity;
+                        }
+
+                        OutTokenMap.Add(Label, FormattedQuantity);
+                        OutUnitMap.Add(Label, UnitKey);
+
+                    }
+                }
+            }
+
+            OnComplete.ExecuteIfBound(true, TEXT(""));
+        });
+
+    HttpRequest->ProcessRequest();
+}
+
+
 // TODO
 bool UCardanoBlueprintLibrary::SendLovelaceWithOgmios(
     const FString& OgmiosURL,
@@ -3837,6 +4096,89 @@ void UCardanoBlueprintLibrary::QueryBalanceWithOgmios(
             OnComplete.ExecuteIfBound(BalanceResponse);
         });
 
+    HttpRequest->ProcessRequest();
+}
+
+void UCardanoBlueprintLibrary::GetWalletNonceAsync(
+    const FString& StakeAddress,
+    const FString& UrlBase,
+    const FString& WalletName,
+    const FOnGetWalletNonceComplete& OnComplete)
+{
+    // Input validation
+    if (StakeAddress.IsEmpty() || UrlBase.IsEmpty())
+    {
+        FWalletNonceResult Result;
+        Result.bSuccess = false;
+        Result.ErrorMessage = TEXT("Invalid input parameters");
+        OnComplete.ExecuteIfBound(Result);
+        return;
+    }
+
+    // Create HTTP request
+    FString FullUrl = FString::Printf(TEXT("%s/api/v1/auth/get-nonce?address=%s&walletName=%s"),
+        *UrlBase, *StakeAddress, *WalletName);
+
+    TSharedRef<IHttpRequest, ESPMode::ThreadSafe> HttpRequest = FHttpModule::Get().CreateRequest();
+    HttpRequest->SetURL(FullUrl);
+    HttpRequest->SetVerb("GET");
+    HttpRequest->SetHeader("Content-Type", "application/json");
+
+    // Set up response handler
+    HttpRequest->OnProcessRequestComplete().BindLambda(
+        [OnComplete](FHttpRequestPtr Request, FHttpResponsePtr Response, bool bConnected)
+        {
+            FWalletNonceResult Result;
+            Result.bSuccess = false;
+
+            if (!bConnected)
+            {
+                Result.ErrorMessage = TEXT("Failed to connect to server");
+                OnComplete.ExecuteIfBound(Result);
+                return;
+            }
+
+            if (!Response.IsValid())
+            {
+                Result.ErrorMessage = TEXT("Invalid response received");
+                OnComplete.ExecuteIfBound(Result);
+                return;
+            }
+
+            if (Response->GetResponseCode() != 200)
+            {
+                Result.ErrorMessage = FString::Printf(TEXT("Server returned error code: %d"), Response->GetResponseCode());
+                OnComplete.ExecuteIfBound(Result);
+                return;
+            }
+
+            // Parse JSON response
+            FString JsonStr = Response->GetContentAsString();
+            TSharedPtr<FJsonObject> Json;
+            TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonStr);
+
+            if (FJsonSerializer::Deserialize(Reader, Json) && Json.IsValid())
+            {
+                if (Json->HasField("nonce"))
+                {
+                    Result.Nonce = Json->GetStringField("nonce");
+                    Result.bSuccess = true;
+                }
+                else
+                {
+                    Result.ErrorMessage = TEXT("Response did not contain a nonce field");
+                }
+            }
+            else
+            {
+                Result.ErrorMessage = TEXT("Failed to parse server response");
+            }
+
+            // Execute callback with result
+            OnComplete.ExecuteIfBound(Result);
+        });
+
+    // Process the request
     HttpRequest->ProcessRequest();
 }
 
@@ -4750,3 +5092,52 @@ FString UCardanoBlueprintLibrary::DecodeCardanoAssetName(const FString& HexEncod
     UE_LOG(LogTemp, Warning, TEXT("Could not decode to printable string, returning original: %s"), *HexEncodedAssetName);
     return HexEncodedAssetName;
 }
+
+int64 UCardanoBlueprintLibrary::ConvertDisplayAmountToRawUnits(const FString& Ticker, const FString& DisplayAmount)
+{
+    const TMap<FString, int32> TickerToDecimals = {
+        { TEXT("ADA"), 6 },
+        { TEXT("DJED"), 6 },
+        { TEXT("HOSKY"), 0 },
+        { TEXT("SNEK"), 0 },
+        { TEXT("MIN"), 5 },
+        { TEXT("USDM"), 6 },
+        { TEXT("rsBTC"), 8 },
+        { TEXT("TOKE"), 0 },
+        { TEXT("Crystal Frags"), 4 },
+        { TEXT("LateNiteScripts LLC"), 6 },
+        { TEXT("USDA"), 6 }
+    };
+
+    int32 Decimals = TickerToDecimals.Contains(Ticker) ? TickerToDecimals[Ticker] : 0;
+    FString Clean = DisplayAmount.Replace(TEXT(","), TEXT("")).TrimStartAndEnd();
+    double FloatAmount = FCString::Atod(*Clean);
+    double Scaled = FloatAmount * FMath::Pow(10.0, Decimals);
+    return static_cast<int64>(Scaled + 0.5); // manual rounding
+}
+
+void UCardanoBlueprintLibrary::MergeTokenTransfers(const TArray<FTokenTransfer>& Transfers, TMap<FString, int64>& OutMergedMap)
+{
+    OutMergedMap.Empty();
+
+    for (const FTokenTransfer& Transfer : Transfers)
+    {
+        FString Unit;
+
+        if (Transfer.PolicyId.IsEmpty()) // ADA
+        {
+            Unit = TEXT("lovelace");
+        }
+        else
+        {
+            Unit = Transfer.PolicyId;
+        }
+
+        if (Transfer.Amount > 0)
+        {
+            OutMergedMap.Add(Unit, Transfer.Amount);
+        }      
+    }
+}
+
+
