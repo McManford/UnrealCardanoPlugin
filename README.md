@@ -19,6 +19,10 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 
 - [ ] **Fee estimation and coin selection strategies**.
 
+## Installation
+
+For windows users, you need to install [msys2](https://www.msys2.org/), this adds the necessary Unix tools to for the DLLs load.
+
 ## Development
 
 This project is built with **Unreal Engine** and **C++**, leveraging [Biglup's cardano-c library](https://github.com/Biglup/cardano-c) and tools. Currently tested and supports Unreal Engine version 4.27 on Windows and MacOS, should work with later versions but not tested yet. 
