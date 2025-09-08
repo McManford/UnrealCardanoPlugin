@@ -11,7 +11,7 @@ A prototype plugin for integrating Cardano with Unreal Engine. This project is c
 - ✅ Retrieve the **Lovelace and token balance** using the [Koios API](https://api.koios.rest) and [Ogmios](https://github.com/CardanoSolutions/ogmios).
 - ✅ Mac, Android, iOS, and other platform libraries added.
   - Runtime: Tested on iPhone XS (iOS 18), AppleTV 4K (tvOS 18.3), and Android Galaxy S22 Ultra (Android 14).
-  - Editor: Tested and supports Unreal Engine version 4.27 on Windows and MacOS.
+  - Editor: Tested and supports Unreal Engine version 4.27 & 5.5 on Windows and MacOS.
 - ✅ Example code using [cardano-wallet API service](https://github.com/cardano-foundation/cardano-wallet).
 - ✅ **Multi-asset support** for sending Cardano based tokens, using Blockfrost API and cardano-c's example.
 
